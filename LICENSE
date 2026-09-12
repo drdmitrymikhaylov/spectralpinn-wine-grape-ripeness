@@ -1,14 +1,5 @@
-Creative Commons Attribution 4.0 International (CC BY 4.0)
+Documentation, figures and result files: CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/).
 
-Copyright (c) 2026 Dmitry Mikhaylov
-
-The documentation, figures and result files in this repository are licensed
-under CC BY 4.0.  Full text: https://creativecommons.org/licenses/by/4.0/
-
-The underlying measurements are from "Spectral dataset of grape berries from
-hyperspectral imaging for maturity monitoring" by Maxime Ryckewaert and Carole
-Feilhes (Mendeley Data, doi:10.17632/gjwx64sgkp), also CC BY, and remain the
-work of those authors.
-
-This licence covers the contents of this repository only.  The source code of
-the analysis is not part of this repository and is not licensed here.
+Source code in src/ and tests/: MIT License, Copyright (c) 2026 Dmitry Mikhaylov.
+The dataset is CC BY and belongs to its authors; see data/SOURCE.md.

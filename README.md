@@ -57,6 +57,7 @@ range; the conversion is used for reporting only and never inside a model.
 | 5 | For the white variety modelled on two reds there is no relationship to rescue (r = 0.06), and the standard spectroscopic outlier test flags 100% of those spectra. A deployed module should refuse the question rather than answer it. | §3 |
 | 6 | A grey card in frame is not enough. Calibrated at 5500 K and used in open shade, a white-balanced camera still degrades to 40 g/L — worse than guessing. | §4 |
 | 7 | The robot's real advantage is not accuracy, it is n. Its block mean beats a three-tray hand sample after 5 to 38 readings, and after 300 it is six times tighter than that hand sample. | §5 |
+| 8 | Putting the "sugar displaces water" argument into a radiative-transfer equation does not help. A slab model with learned constituent spectra fits the reflectance to 3% and finds water where water absorbs, but its water content tracks sugar only in one variety (r = −0.90, the same as the band-depth index) and flips sign in the other two. The half-band the camera sees is not enough to separate water from thickness. | §6 |
 
 ---
 
@@ -266,11 +267,61 @@ sweeps it rather than asserting it. Anyone specifying a machine should measure
 it in their own vineyard first; it is a morning's work with a refractometer and
 it decides the whole design.
 
+
+---
+
+## 6. The physics, written as an equation — and what it does not buy
+
+![slab model](figures/06_slab_model.png)
+
+The mechanism behind every near-infrared result above is that sugar
+displaces water and the water absorption near 960 nm gets shallower. §1 read
+that as an index. Here it is put into the equation it comes from: a berry
+surface is a scattering, absorbing layer, and its reflectance obeys the
+finite-thickness Kubelka–Munk solution
+
+R = 1 / (a + b·coth(b·S·d)),  a = 1 + K/S,  b = √(a² − 1),
+
+with the absorption K·d a sum over constituents — a pigment below 600 nm, a
+pigment between 600 and 760 nm, water above 880 nm — whose specific spectra
+are small networks of wavelength, learned jointly with per-tray contents and
+a per-tray scattering thickness from reflectance alone. No sugar value
+enters the fit. The point of the thickness term is that water *per unit
+thickness* is what sugar displaces; an index cannot separate the two.
+
+The model does what it is asked physically: it reproduces the 274 spectra
+to 3% and the learned water spectrum rises where the 960 nm band is (left
+panel). It does not do what the argument promised:
+
+| variety | r(sugar, slab water / thickness) | r(sugar, slab water per area) | r(sugar, band-depth index) |
+|---|---|---|---|
+| SYRAH | −0.52 | **−0.90** | **−0.90** |
+| FER | +0.41 | +0.23 | −0.72 |
+| MAUZAC | +0.12 | +0.36 | −0.02 |
+
+In the one variety where the water signal is strong the slab's water
+content is exactly as good as the index. In the other two its sign flips,
+where the index at least keeps the physical sign. Calibrated on two
+varieties and applied to the third, the slab features are worse than
+predicting the mean on every variety; the index survives on SYRAH (RMSE
+27.5 g/L against 37.3 for the mean) and on nothing else.
+
+The reason is in the data, not the equation. The camera stops at 1003 nm,
+in the middle of the 960 nm band: the model sees half a band and a plateau,
+and from those it cannot tell "less water" from "thinner tissue" — the two
+trade against each other in the fit, and which way they trade depends on
+the variety's skin. The continuum-removed index is a cruder measurement of
+the same physics, and cruder is more robust here. This is the honest
+version of §1's claim: the mechanism is real, and the instrument does not
+reach far enough to exploit it properly. A head that reaches 1450 nm would
+give the slab model a whole band, and this dataset cannot say what it would
+then do.
+
 ---
 
 ## Verification
 
-Eight checks run as a suite, all passing:
+Ten checks run as a suite, all passing (two need PyTorch and are skipped without it):
 
 - the colour matching functions peak where the CIE 1931 functions do (ȳ at
   555 nm, z̄ at 446 nm)
@@ -287,6 +338,9 @@ Eight checks run as a suite, all passing:
   cannot quietly erase it
 - the transfer failure is a shift for SYRAH (r > 0.8) and an absence of
   relationship for MAUZAC (|r| < 0.4)
+- the slab model's reflectance reduces to S·d/(1 + S·d) when absorption
+  vanishes and to 1/(a + b) when the layer is optically thick, and every
+  learned constituent is zero outside its physical window
 
 ---
 
@@ -314,13 +368,20 @@ Eight checks run as a suite, all passing:
 
 ## Source code
 
-**The source code for this project is not public.** This page documents the
-data, the method, the measurements and the conclusions; the implementation is
-held in a private repository and is available under NDA.
+The core is public, in `src/`:
 
-What is described here: the camera model, the spectral preprocessing, the
-regression and validation protocols, the transfer and outlier diagnostics, the
-illumination model, and the sampling calculations.
+| file | what it is |
+|---|---|
+| `data.py` | loader, SNV, Brix conversion |
+| `camera.py` | the camera model: CIE matching functions, sensor curves, illuminants, water-band depth |
+| `exp1_rgb_vs_nir.py` | feature sets, the three validation schemes, the baseline |
+| `exp2_transfer.py` | offset-vs-scatter decomposition and the outlier test |
+| `exp5_km_pinn.py` | the finite-thickness Kubelka–Munk slab with learned constituent spectra (PyTorch) |
+| `tests/test_all.py` | the ten checks above |
+
+The dataset is CC BY and is downloaded as described in `data/SOURCE.md`;
+it is not redistributed here. The illumination and sampling experiments
+(exp3, exp4) and the figure scripts are held privately.
 
 ---
 

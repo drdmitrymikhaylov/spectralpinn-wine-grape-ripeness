@@ -1,11 +1,22 @@
 cff-version: 1.2.0
 message: "If you use this repository, please cite it as below."
 type: software
-title: "spectralpinn-wine-grape-ripeness"
+title: "SpectralPINN: Grape Sugar Estimation for Vineyard Robots"
+abstract: "Grape sugar from a camera: what a vineyard robot can read"
 authors:
   - family-names: Mikhaylov
     given-names: Dmitry
     orcid: "https://orcid.org/0009-0009-2108-6820"
+    affiliation: "Abu Dhabi Maritime Academy, AD Ports Group"
 repository-code: "https://github.com/drdmitrymikhaylov/spectralpinn-wine-grape-ripeness"
+url: "https://github.com/drdmitrymikhaylov/spectralpinn-wine-grape-ripeness"
 license: "CC-BY-4.0"
-year: 2026
+keywords:
+  - "agricultural robotics"
+  - "brix"
+  - "chemometrics"
+  - "hyperspectral"
+  - "near infrared spectroscopy"
+  - "precision agriculture"
+  - "viticulture"
+date-released: "2026-09-08"

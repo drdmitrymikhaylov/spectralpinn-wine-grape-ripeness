@@ -15,6 +15,10 @@ to the decisions it changes.
 
 ---
 
+## Why grapes
+
+Reading crops through light is a field I have worked in for years, from satellite yield programmes in emerging economies to hyperspectral systems in the lab. Winemakers came with a precise question: can a camera on a robot tell when a grape is ready, without picking a single berry? This repository is my answer from research and client work, rebuilt on an open vineyard dataset: what a colour camera sees, what near-infrared adds, and the physics of the berry that explains both.
+
 ## Berries and labels
 
 [Spectral dataset of grape berries from hyperspectral imaging for maturity

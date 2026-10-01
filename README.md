@@ -135,7 +135,9 @@ There are two ways for a calibration to fail on a new variety, and they call
 for opposite responses.
 
 **An offset** means every prediction is shifted but the ranking is intact. One
-reference measurement fixes it.
+reference measurement fixes it, provided the shift is larger than the scatter
+around it. Where it is not, the reference makes things worse (see *Checking
+§3* below).
 **Scatter** means the relationship is gone. No number of reference
 measurements fixes it; the calibration has to be rebuilt.
 
@@ -167,7 +169,8 @@ That distinction has to be made *before* the answer is given, not after, and
 the standard tools do make it. Hotelling's T² inside the model's latent space
 and the Q residual orthogonal to it, both thresholded at the 95th percentile of
 the training data, flag **100%** of MAUZAC spectra for every multi-band model.
-The held-out red varieties are flagged at 2-60%. So the module can say "this
+The held-out red varieties are flagged at 2-77% (this read 2-60% until
+1 October 2026; the visible model on SYRAH is at 77%). So the module can say "this
 is not a grape I was calibrated on" instead of returning 203 g/L. The
 one-dimensional water index is the exception. With a single latent direction
 its diagnostics are weak, and it flags only 19%. A small model is harder to
@@ -307,6 +310,110 @@ slab model a whole band, and this dataset cannot say what it would then do.
 
 ---
 
+## Checking §3: when a reference tray hurts, and what the outlier test lets through
+
+*Added 1 October 2026.* §3 makes two practical promises: a few hand-pressed
+trays repair a shifted calibration, and the outlier test tells the module
+when to refuse. Both were re-read from the stored results
+(`results/exp2_transfer.json`) by `src/transfer_checks.py`. The first part
+needs no data; the second refits the same models. The numbers are in
+`results/transfer_checks.json` and pinned by `tests/test_readme_numbers.py`.
+
+**A reference tray is not free.** Correcting with k trays replaces a known
+bias by an estimated one, and the estimate carries the scatter of the k trays
+it was made from. After correction the error is the floor (the "offset
+removed" column of §3) times √(1 + 1/k). Left alone it is √(floor² + bias²).
+So references only help once k exceeds about (floor / bias)².
+
+| model | held out | bias / floor | break-even k | raw | after 1 | after 5 | after 20 | floor |
+|---|---|---|---|---|---|---|---|---|
+| near-infrared | SYRAH | 2.15 | 0.2 | 37.7 | 21.0 | 17.1 | 16.4 | 15.9 |
+| all bands | SYRAH | 1.20 | 0.7 | 37.3 | 32.3 | 26.2 | 24.7 | 23.9 |
+| near-infrared | FER | 1.34 | 0.6 | 44.1 | 36.3 | 29.2 | 27.2 | 26.4 |
+| near-infrared | MAUZAC | 0.61 | 2.8 | 44.0 | 50.4 | 41.1 | 38.5 | 37.5 |
+| visible | FER | 0.42 | 6.5 | 21.7 | 27.7 | 22.1 | 20.8 | 20.0 |
+| colour camera (RGB) | SYRAH | 0.23 | 23 | 31.5 | 40.5 | 33.5 | 31.6 | 30.7 |
+| visible | SYRAH | 0.21 | 27 | 27.3 | 37.1 | 29.4 | 27.5 | 26.7 |
+| water index | SYRAH | 0.13 | 114 | 27.5 | 36.7 | 29.6 | 28.0 | 27.3 |
+
+RMSE in g/L on the trays not used as references, mean of 200 random draws of
+the reference trays; eight of the 18 model-variety cells shown, all 18 are in
+the JSON.
+
+One hand-pressed tray makes the answer worse in 11 of the 18 cells. Five
+trays still leave it worse in 6, and two of those are rows of the §3 table:
+the visible model on SYRAH goes from 27.3 to 29.4 g/L and the water index
+from 27.5 to 29.6. For the water index on SYRAH the break-even is 114 trays,
+of the 126 that exist. The "after 5 refs" column of §3 is 8 to 11% above the
+"offset removed" column in every cell, which is √1.2 = 1.095 and nothing
+more. The closed form reproduces the stored simulation to within 2.2% of the
+floor from five trays up. At one tray it sits up to 12% above it, because the
+stored figure is a mean of RMSEs and the formula is the root of a mean square.
+
+The headline of §3 survives: for near-infrared on SYRAH the bias is 2.15
+times the floor, one tray takes 37.7 to 21.0 and five take it to 17.1. But
+"press a few trays" is not a safe default. The offset estimated from the
+first k trays should be applied only if it is clearly larger than their
+scatter divided by √k, and the page should have said so.
+
+**What the outlier test flags.** §3 quoted one number per cell. Split by
+statistic, with the same rule applied to trays of the two training varieties
+held out by 5-fold cross-validation:
+
+| model | held out | flagged | by T² | by Q | median distance / limit | training varieties flagged | r | raw RMSE / SD |
+|---|---|---|---|---|---|---|---|---|
+| visible | FER | 60% | 8% | 57% | 1.40 | 18% | 0.78 | 0.68 |
+| visible | SYRAH | 77% | 68% | 40% | 1.52 | 13% | 0.76 | 0.73 |
+| near-infrared | FER | 3% | 3% | 0% | 0.58 | 14% | 0.56 | 1.38 |
+| near-infrared | SYRAH | 47% | 46% | 9% | 0.95 | 12% | 0.91 | 1.01 |
+| all bands | FER | 44% | 2% | 44% | 0.95 | 18% | 0.62 | 1.43 |
+| all bands | SYRAH | 55% | 52% | 12% | 1.11 | 12% | 0.78 | 1.00 |
+| visible | MAUZAC | 100% | 100% | 100% | 502 | 9% | -0.24 | 2.12 |
+| near-infrared | MAUZAC | 100% | 100% | 100% | 67 | 14% | 0.06 | 1.30 |
+| all bands | MAUZAC | 100% | 100% | 100% | 689 | 14% | -0.55 | 6.40 |
+
+"Distance / limit" is the larger of T²/limit and Q/limit per tray. "Raw RMSE /
+SD" above 1 means worse than predicting the mean.
+
+Four things follow.
+
+*The white grape is not a close call.* Every MAUZAC tray, in every multi-band
+model, is at least 34 times beyond its limit, with medians from 67 to 817.
+The red medians are 0.2 to 1.5 times the limit and the single worst red tray
+is at 27 (visible, SYRAH, where 2% of trays are beyond 10). Any threshold
+between 27 and 34 times the limit separates all 425 white tray-model pairs
+from all 945 red ones. That threshold is read off after the fact, on one
+white variety. It describes the gap; it is not a setting.
+
+*At the 95% limit the test also rejects grapes it was calibrated on.* Trays
+of the training varieties, held out by cross-validation, are flagged at 5 to
+18% (9 to 18% for the three spectral models). The 3% for near-infrared on
+FER is below that.
+
+*The flag says nothing about whether the answer is usable.* Near-infrared on
+SYRAH is the best transfer on the page (r = 0.91) and has 47% of its trays
+flagged. Near-infrared on FER has 3% flagged and is biased by +35.4 g/L, an
+RMSE of 44.1 against a standard deviation of 31.9. The test passes 97% of
+the trays of a variety on which the model is worse than the mean. T² and Q
+catch a spectrum unlike the training set. They do not catch a
+familiar-looking spectrum whose sugar relationship has shifted, and an
+offset is exactly that. Verdict 5 holds for the white grape and for nothing
+subtler. In FER the flags come from Q (the spectra leave the model's plane),
+in SYRAH from T² (they stay in it and sit further out).
+
+*For the three-channel models Q is not a measurement.* With three components
+on three channels (RGB and L\*a\*b\* in four of their six cells) nothing is
+left orthogonal to the model. Q is rounding error, 10⁻²⁹ or smaller, and its
+"95th percentile" flags trays by rounding. Refitting the same models moved
+the stored fractions from 1.6 to 3.2% (RGB, FER), from 4.8 to 1.6%
+(L\*a\*b\*, FER) and from 58.7 to 50.8% (L\*a\*b\*, SYRAH), while all 11
+cells with a real residual reproduced exactly. The "2" at the low end of the
+2-77% range is one tray of 63, decided by floating point. Q should be
+skipped when the model has as many components as the feature set has
+columns; the stored results were not regenerated.
+
+---
+
 ## Verdict
 
 | # | Finding | Evidence |
@@ -319,6 +426,7 @@ slab model a whole band, and this dataset cannot say what it would then do.
 | 6 | A grey card in frame is not enough. Calibrated at 5500 K and used in open shade, a white-balanced camera still degrades to 40 g/L, worse than guessing. | §4 |
 | 7 | The robot's real advantage is not accuracy, it is n. Its block mean beats a three-tray hand sample after 5 to 38 readings, and after 300 it is six times tighter than that hand sample. | §5 |
 | 8 | Putting the "sugar displaces water" argument into a radiative-transfer equation does not help. A slab model with learned constituent spectra fits the reflectance to 3% and finds water where water absorbs. But its water content tracks sugar only in one variety (r = -0.90, the same as the band-depth index) and flips sign in the other two. The half-band the camera sees is not enough to separate water from thickness. | §6 |
+| 9 | Findings 4 and 5 have edges. A reference tray helps only when the offset is larger than the scatter: one tray makes the answer worse in 11 of 18 model-variety cells, five trays in 6. And the outlier test catches the white grape (every tray at least 34 times beyond the limit) but passes 97% of the trays of a red variety on which the near-infrared model is off by +35 g/L. | Checking §3 |
 
 ---
 
@@ -376,7 +484,9 @@ The core is public, in `src/`:
 | `exp1_rgb_vs_nir.py` | feature sets, the three validation schemes, the baseline |
 | `exp2_transfer.py` | offset-vs-scatter decomposition and the outlier test |
 | `exp5_km_pinn.py` | the finite-thickness Kubelka-Munk slab with learned constituent spectra (PyTorch) |
+| `transfer_checks.py` | the re-reading of experiment 2 in *Checking §3*: break-even number of reference trays, and the outlier flags split by statistic |
 | `tests/test_all.py` | the ten checks below |
+| `tests/test_readme_numbers.py` | eight checks that pin the numbers of *Checking §3* to `results/`; they need no dataset |
 
 The dataset is CC BY and is downloaded as described in `data/SOURCE.md`;
 it is not redistributed here. The illumination and sampling experiments

@@ -1,0 +1,23 @@
+{
+  "upload_type": "software",
+  "title": "SpectralPINN: Grape Sugar Estimation for Vineyard Robots",
+  "description": "Grape sugar from a camera: what a vineyard robot can read",
+  "creators": [
+    {
+      "name": "Mikhaylov, Dmitry",
+      "orcid": "0009-0009-2108-6820",
+      "affiliation": "Abu Dhabi Maritime Academy, AD Ports Group"
+    }
+  ],
+  "license": "cc-by-4.0",
+  "keywords": [
+    "agricultural robotics",
+    "brix",
+    "chemometrics",
+    "hyperspectral",
+    "near infrared spectroscopy",
+    "precision agriculture",
+    "viticulture"
+  ],
+  "access_right": "open"
+}

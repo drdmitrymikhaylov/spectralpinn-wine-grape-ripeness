@@ -1,5 +1,7 @@
 # Reading sugar off a grape
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23529581.svg)](https://doi.org/10.5281/zenodo.23529581)
+
 What a vineyard robot can and cannot learn about ripeness by looking -- and
 what it would have to carry instead.
 

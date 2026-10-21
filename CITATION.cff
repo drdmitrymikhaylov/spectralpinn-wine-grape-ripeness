@@ -2,6 +2,7 @@ cff-version: 1.2.0
 message: "If you use this repository, please cite it as below."
 type: software
 title: "SpectralPINN: Grape Sugar Estimation for Vineyard Robots"
+doi: "10.5281/zenodo.23529581"
 abstract: "Grape sugar from a camera: what a vineyard robot can read"
 authors:
   - family-names: Mikhaylov

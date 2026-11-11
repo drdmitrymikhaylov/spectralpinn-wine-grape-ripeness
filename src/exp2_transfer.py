@@ -65,13 +65,25 @@ def diagnostics(pipe, Xtr, Xte):
     q_te = np.sum((Zte - rec_te) ** 2, axis=1)
     lim_t2 = float(np.quantile(t2_tr, 0.95))
     lim_q = float(np.quantile(q_tr, 0.95))
-    flagged = (t2_te > lim_t2) | (q_te > lim_q)
+    # With as many components as the feature set has columns nothing is
+    # left orthogonal to the model: Q is rounding residue (of order 1e-29)
+    # and its "95th percentile" would flag trays by floating point.  Flag
+    # by T^2 alone there.  (Until 11 November 2026 Q was used in every
+    # cell; the four full-rank colour cells and the three water-index cells
+    # carried flags decided by rounding.)
+    q_used = pls.n_components < Ztr.shape[1]
+    by_t2 = t2_te > lim_t2
+    by_q = q_te > lim_q
+    flagged = (by_t2 | by_q) if q_used else by_t2
     return {
         "t2_limit": lim_t2, "q_limit": lim_q,
+        "q_used": bool(q_used),
         "t2_median_train": float(np.median(t2_tr)),
         "t2_median_test": float(np.median(t2_te)),
         "q_median_train": float(np.median(q_tr)),
         "q_median_test": float(np.median(q_te)),
+        "flagged_by_t2": float(by_t2.mean()),
+        "flagged_by_q": float(by_q.mean()) if q_used else None,
         "flagged_fraction": float(flagged.mean()),
     }
 

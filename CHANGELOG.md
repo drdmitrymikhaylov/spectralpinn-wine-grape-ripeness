@@ -2,6 +2,34 @@
 
 Dated notes on what changed on this page and why. Newest first.
 
+## 2026-11-11
+
+- New section "Checking §2". The within-variety table of experiment 1 was
+  re-run for all three varieties with the same seeds
+  (`src/within_variety_check.py`, `results/within_variety_check.json`; all
+  21 stored cells reproduce to 1e-4). The "factor of two" of §2 is a SYRAH
+  statement: there near-infrared divides the camera's error by 1.94 (1.73
+  to 2.03 over ten fold splits; resampling the 126 trays gives [1.58, 2.45],
+  above 2 in 46% of resamples). On FER it buys 9% ([0.91, 1.31]) and on
+  MAUZAC 6% ([0.96, 1.17]); on FER the visible bands (1.30) and the full
+  spectrum (1.34) do more than the infrared. Within MAUZAC every feature set
+  sits at 27.4 to 34.3 g/L against an SD of 33.7, and the visible bands and
+  the water index are behind the camera. Finding 2 and the §2 paragraph
+  amended. `tests/test_within_variety.py` (six tests, no dataset).
+- `src/exp2_transfer.py` now skips the Q residual wherever the model has as
+  many components as the feature set has columns (the four full-rank colour
+  cells and the three water-index cells) and flags by T² alone, as the
+  1 October caveat said it should; `results/exp2_transfer.json` and
+  `results/transfer_checks.json` regenerated. Every other number reproduced
+  to 1e-11. Two flag fractions moved: L\*a\*b\* on FER 4.8 to 1.6% (3 trays
+  to 1 of 63), L\*a\*b\* on SYRAH 58.7 to 49.2% (74 to 62 of 126) — fourteen
+  trays had been flagged by floating point. The 2-77% range and the outlier
+  table are unchanged. The JSON now also carries the T² and Q fractions per
+  cell. `tests/test_readme_numbers.py` updated accordingly.
+- `tests/test_all.py`: the three checks that read `data/DATASET.csv` skip
+  on a clone without it instead of failing (they had failed on every fresh
+  clone, since the dataset is not redistributed).
+
 ## 2026-10-19
 
 - LICENSE now holds the standard MIT text and LICENSE-CONTENT the standard CC BY 4.0 text, so GitHub recognises the licence (it showed "Other" before). The terms are unchanged; the note on what each licence covers moved to `NOTICE.md`.

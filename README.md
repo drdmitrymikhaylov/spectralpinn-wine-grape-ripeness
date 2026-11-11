@@ -113,7 +113,10 @@ realistic case, since a block is one variety and can be calibrated on itself.
 On SYRAH the near-infrared model reaches 10.6 g/L, just under 1 °Brix, while
 the camera stays at 20.6 g/L. That factor of two is the fair measure of what
 the infrared half of the spectrum is worth, and it is the number a robot
-specification should be written against.
+specification should be written against. It is also a SYRAH number: on FER
+near-infrared buys 9% over the camera and on MAUZAC 6%, neither clear of
+zero, and the same ten repeats give the SYRAH factor a tray-resampled range
+of 1.6 to 2.5 (*Checking §2* below).
 
 **Leave one variety out** is where it falls apart. Every bar in the third
 panel is at or above that variety's own standard deviation, except the visible
@@ -406,13 +409,111 @@ in SYRAH from T² (they stay in it and sit further out).
 *For the three-channel models Q is not a measurement.* With three components
 on three channels (RGB and L\*a\*b\* in four of their six cells) nothing is
 left orthogonal to the model. Q is rounding error, 10⁻²⁹ or smaller, and its
-"95th percentile" flags trays by rounding. Refitting the same models moved
-the stored fractions from 1.6 to 3.2% (RGB, FER), from 4.8 to 1.6%
-(L\*a\*b\*, FER) and from 58.7 to 50.8% (L\*a\*b\*, SYRAH), while all 11
-cells with a real residual reproduced exactly. The "2" at the low end of the
-2-77% range is one tray of 63, decided by floating point. Q should be
-skipped when the model has as many components as the feature set has
-columns; the stored results were not regenerated.
+"95th percentile" flags trays by rounding. On 1 October a refit of the same
+models moved those stored fractions (RGB on FER 1.6 to 3.2%, L\*a\*b\* on
+FER 4.8 to 1.6%, L\*a\*b\* on SYRAH 58.7 to 50.8%) while all 11 cells with a
+real residual reproduced exactly, and the page said the results should be
+regenerated with Q skipped. Since 11 November 2026 `src/exp2_transfer.py`
+skips Q wherever the model has as many components as the feature set has
+columns and flags by T² alone, and `results/exp2_transfer.json` was
+regenerated: every other number in it reproduced to 10⁻¹¹, and two flag
+fractions moved, L\*a\*b\* on FER from 4.8 to 1.6% (3 trays to 1 of 63) and
+L\*a\*b\* on SYRAH from 58.7 to 49.2% (74 to 62 of 126). Fourteen trays had
+been flagged by floating point. RGB on FER stays at 1.6%: the "2" at the
+low end of the 2-77% range is one tray of 63, and it is beyond the T²
+limit. The one-column water index is full rank too (one component on one
+column); its 11 / 19 / 13% were T² flags already and do not move. The
+outlier table above is unchanged, since none of its rows is a full-rank
+cell.
+
+---
+
+## Checking §2: the factor of two, on all three varieties
+
+*Added 11 November 2026.* §2 quotes one within-variety cell, SYRAH, and
+finding 2 generalised it: inside one variety, near-infrared roughly halves
+the camera's error. Experiment 1 stored the same table for FER and MAUZAC
+(`results/exp1_rgb_vs_nir.json`, "within"), each cell the mean of ten
+repeats of random 5-fold cross-validation, and the page never read them.
+`src/within_variety_check.py` re-runs the protocol with the same seeds,
+keeps every repeat and every out-of-fold prediction, and reproduces all 21
+stored cells to 10⁻⁴. The numbers are in `results/within_variety_check.json`
+and pinned by `tests/test_within_variety.py`.
+
+**Within each variety, RMSE in g/L**, mean ± sd over the ten repeats. The
+sd is the spread over fold splits of one sample of trays, not the sampling
+error (see the bootstrap below).
+
+| feature set | FER (SD 31.9) | MAUZAC (SD 33.7) | SYRAH (SD 37.4) |
+|---|---|---|---|
+| colour camera (RGB) | 22.8 ± 0.6 | 29.2 ± 1.2 | 20.6 ± 0.3 |
+| L\*a\*b\* | 22.7 ± 0.6 | 29.3 ± 1.5 | 20.8 ± 0.3 |
+| visible | 17.5 ± 0.4 | 31.5 ± 2.5 | 14.2 ± 0.6 |
+| red edge | 19.8 ± 0.7 | 28.5 ± 1.3 | 13.2 ± 0.5 |
+| near-infrared | 21.0 ± 0.9 | 27.4 ± 1.0 | 10.6 ± 0.5 |
+| all bands | 17.0 ± 0.5 | 28.7 ± 1.6 | 11.5 ± 0.5 |
+| water index | 23.1 ± 0.4 | 34.3 ± 0.3 | 16.8 ± 0.1 |
+
+**What the camera's error is divided by.** The camera's RMSE over the
+model's; its range over the ten repeats, paired (the k-th repeat of every
+feature set shares one fold split, which depends only on the seed and the
+number of trays); the number of repeats in which the model is ahead; and a
+tray-level bootstrap, 2 000 resamples of the variety's trays with both
+RMSEs recomputed from the stored out-of-fold predictions of every repeat,
+with the share of resamples in which the model is ahead at all.
+
+| variety | model | camera / model | over repeats | model ahead | tray bootstrap 95% | ahead in |
+|---|---|---|---|---|---|---|
+| FER | visible | 1.30 | 1.23-1.37 | 10 of 10 | [1.10, 1.63] | 100% |
+| FER | near-infrared | 1.09 | 1.00-1.16 | 9 of 10 | [0.91, 1.31] | 82% |
+| FER | all bands | 1.34 | 1.26-1.41 | 10 of 10 | [1.15, 1.63] | 100% |
+| FER | water index | 0.99 | 0.95-1.04 | 3 of 10 | [0.80, 1.26] | 49% |
+| MAUZAC | visible | 0.93 | 0.86-1.00 | 2 of 10 | [0.83, 1.01] | 4% |
+| MAUZAC | near-infrared | 1.06 | 0.99-1.11 | 9 of 10 | [0.96, 1.17] | 88% |
+| MAUZAC | all bands | 1.02 | 0.95-1.06 | 7 of 10 | [0.86, 1.12] | 56% |
+| MAUZAC | water index | 0.85 | 0.81-0.89 | 0 of 10 | [0.64, 1.03] | 4% |
+| SYRAH | visible | 1.45 | 1.32-1.54 | 10 of 10 | [1.19, 1.80] | 100% |
+| SYRAH | near-infrared | 1.94 | 1.73-2.03 | 10 of 10 | [1.58, 2.45] | 100% |
+| SYRAH | all bands | 1.78 | 1.66-1.89 | 10 of 10 | [1.43, 2.27] | 100% |
+| SYRAH | water index | 1.23 | 1.19-1.26 | 10 of 10 | [1.07, 1.41] | 100% |
+
+Three things follow.
+
+*The factor of two is a SYRAH statement.* On SYRAH near-infrared divides
+the camera's error by 1.94 (1.73 to 2.03 over the ten fold splits, ahead in
+all ten); resampling the 126 trays gives [1.58, 2.45], above 2 in 46% of
+resamples. "Roughly halves" is the point estimate of one variety, and that
+variety's own tray sample puts the factor anywhere between 1.6 and 2.5. The
+near-infrared RMSE itself, 10.6 g/L, resamples to [8.4, 13.1]: a half-width
+of 2.4 g/L where the spread over repeats is 0.5.
+
+*On the other two varieties the infrared half of the spectrum buys 9% on
+FER and 6% on MAUZAC* (1.09 [0.91, 1.31], ahead in 9 of 10 repeats; 1.06
+[0.96, 1.17]), and neither interval clears 1. On FER the gain within the
+variety is in the visible, not the infrared: the visible bands divide the
+camera's error by 1.30 and the full spectrum by 1.34 [1.15, 1.63], the best
+any feature set does there, while near-infrared alone is the worst spectral
+model on FER (21.0 g/L against 17.0). The mechanism of §1, the water band
+near 960 nm, is the mechanism on SYRAH; on FER whatever the spectrum adds
+over three channels comes from below 700 nm.
+
+*Nothing reads sugar within the white grape, not even calibrated on
+itself.* Every MAUZAC cell sits between 27.4 and 34.3 g/L against a standard
+deviation of 33.7, a ratio of deviation to error of 1.23 at best
+(near-infrared) and 0.98 at worst (the water index, behind predicting the
+mean). The visible bands (0.93) and the water index (0.85, behind the camera
+in all ten repeats) are *worse* than three colour channels. §3's "no
+relationship to rescue" was read from a model trained on reds; the
+within-variety table says the same of a model trained on MAUZAC alone.
+Whatever makes the white grape's water band weak in §1 (r never above 0.63)
+is not a transfer problem.
+
+Finding 2 is amended accordingly. What this does not show: the bootstrap
+resamples trays, not plants or dates, and trays imaged on one date are not
+independent, so the intervals are if anything narrow; the number of
+components is re-chosen inside every fold, so the ratio carries the
+model-selection noise of both arms; one season, one instrument; and the
+white variety's result is one variety, as §2 already says of it.
 
 ---
 
@@ -421,7 +522,7 @@ columns; the stored results were not regenerated.
 | # | Finding | Evidence |
 |---|---------|----------|
 | 1 | A colour camera barely beats guessing. RMSE 30.7 g/L against 35.5 for predicting the mean. | §2 |
-| 2 | Inside one variety, near-infrared roughly halves the error a camera achieves: 10.6 g/L against 20.6, or 1.0 °Brix against 1.9. | §2 |
+| 2 | Inside SYRAH, near-infrared roughly halves the error a camera achieves: 10.6 g/L against 20.6, or 1.0 °Brix against 1.9; resampling the trays puts the factor between 1.6 and 2.5. Inside FER and MAUZAC it buys 9% and 6%, with intervals that include zero, and on FER the visible bands do more than the infrared. (Until 11 November 2026 this row said "inside one variety".) | §2, Checking §2 |
 | 3 | Nothing transfers to an unseen variety as-is. Most feature sets do worse than predicting the mean, and the worst reaches an RMSE of 216 g/L against a population mean of 189. | §2 |
 | 4 | But the near-infrared failure is an *offset*, not a loss of relationship: r = 0.91 on the held-out variety, bias -34 g/L. Five hand-measured trays cut its error from 37.7 to 17.1 g/L. | §3 |
 | 5 | For the white variety modelled on two reds there is no relationship to rescue (r = 0.06), and the standard spectroscopic outlier test flags 100% of those spectra. A deployed module should refuse the question rather than answer it. | §3 |
@@ -487,8 +588,10 @@ The core is public, in `src/`:
 | `exp2_transfer.py` | offset-vs-scatter decomposition and the outlier test |
 | `exp5_km_pinn.py` | the finite-thickness Kubelka-Munk slab with learned constituent spectra (PyTorch) |
 | `transfer_checks.py` | the re-reading of experiment 2 in *Checking §3*: break-even number of reference trays, and the outlier flags split by statistic |
-| `tests/test_all.py` | the ten checks below |
+| `within_variety_check.py` | the re-reading of experiment 1 in *Checking §2*: every within-variety cell with its spread over repeats, and a tray bootstrap of the camera / model ratio |
+| `tests/test_all.py` | the ten checks below (the three that need the dataset skip without it) |
 | `tests/test_readme_numbers.py` | eight checks that pin the numbers of *Checking §3* to `results/`; they need no dataset |
+| `tests/test_within_variety.py` | six checks that pin *Checking §2* to `results/`; no dataset |
 
 The dataset is CC BY and is downloaded as described in `data/SOURCE.md`;
 it is not redistributed here. The illumination and sampling experiments

@@ -160,25 +160,51 @@ def test_the_test_passes_a_shifted_calibration():
     assert pct(min(multi)) == "9%" and pct(max(multi)) == "18%"
 
 
-def test_q_residual_is_rounding_error_at_full_rank():
+def test_q_is_skipped_at_full_rank():
+    """Since 11 November 2026 exp2 flags by T^2 alone where the model has as
+    many components as the feature set has columns; the stored fractions of
+    those cells are then reproducible, and two of them moved."""
     b = CHK["outlier_test"]["cells"]
-    full_rank_colour = [k for k, c in b.items()
-                        if c["full_rank"] and not k.startswith("water|")]
-    assert sorted(full_rank_colour) == ["lab|FER", "lab|SYRAH", "rgb|FER",
-                                        "rgb|MAUZAC"]
-    for k in full_rank_colour:
-        assert EXP2["cells"][k]["diagnostics"]["q_limit"] < 1e-20
-        assert b[k]["q_is_numerical_zero"]
-    moved = {"rgb|FER": ("1.6", "3.2"), "lab|FER": ("4.8", "1.6"),
-             "lab|SYRAH": ("58.7", "50.8")}
-    for k, (old, new) in moved.items():
-        assert r(100 * b[k]["flagged_stored_in_exp2"]) == old, k
-        assert r(100 * b[k]["flagged_either"]) == new, k
-        assert old in README and new in README
+    full_rank = sorted(k for k, c in b.items() if c["full_rank"])
+    assert full_rank == ["lab|FER", "lab|SYRAH", "rgb|FER", "rgb|MAUZAC",
+                         "water|FER", "water|MAUZAC", "water|SYRAH"]
+    for k, c in EXP2["cells"].items():
+        d = c["diagnostics"]
+        assert d["q_used"] == (k not in full_rank), k
+        if d["q_used"]:
+            assert d["q_limit"] > 1e-3, k
+            assert d["flagged_by_q"] is not None
+        else:
+            assert d["q_limit"] < 1e-20, k
+            assert d["flagged_by_q"] is None
+            assert d["flagged_fraction"] == d["flagged_by_t2"], k
+            assert b[k]["q_is_numerical_zero"], k
+            # a refit reproduces a T^2-only fraction exactly
+            assert abs(b[k]["flagged_stored_in_exp2"] - b[k]["flagged_by_t2"]) < 1e-9
+    n = EXP1["config"]["varieties"]
+    flags = {k: EXP2["cells"][k]["diagnostics"]["flagged_fraction"]
+             for k in full_rank}
+    assert round(flags["lab|FER"] * n["FER"]) == 1
+    assert round(flags["rgb|FER"] * n["FER"]) == 1
+    assert round(flags["lab|SYRAH"] * n["SYRAH"]) == 62
+    assert r(100 * flags["lab|SYRAH"]) == "49.2"
+    assert r(100 * flags["lab|FER"]) == "1.6" and r(100 * flags["rgb|FER"]) == "1.6"
+    assert flags["rgb|MAUZAC"] == 1.0
+    for k, v in (("water|FER", "11%"), ("water|MAUZAC", "19%"),
+                 ("water|SYRAH", "13%")):
+        assert pct(flags[k]) == v, k
+    for s in ("4.8 to 1.6% (3 trays to 1 of 63)", "58.7 to 49.2% (74 to 62 of 126)",
+              "Fourteen trays", "11 / 19 / 13%"):
+        assert s in README, s
+    # the 11 cells with a real residual: either-rule fractions, reproduced
     exact = [k for k, c in b.items() if not c["q_is_numerical_zero"]]
-    assert len(exact) == 11
+    assert len(exact) == 11 and sorted(exact) == sorted(
+        k for k in EXP2["cells"] if k not in full_rank)
     for k in exact:
         assert abs(b[k]["flagged_stored_in_exp2"] - b[k]["flagged_either"]) < 1e-9
+        d = EXP2["cells"][k]["diagnostics"]
+        assert abs(d["flagged_by_t2"] - b[k]["flagged_by_t2"]) < 1e-9
+        assert abs(d["flagged_by_q"] - b[k]["flagged_by_q"]) < 1e-9
 
 
 if __name__ == "__main__":

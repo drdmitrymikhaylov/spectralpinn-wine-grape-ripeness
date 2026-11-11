@@ -1,5 +1,6 @@
 """Checks on the physics and the estimators, run before any result is quoted."""
 
+import os
 import sys
 
 sys.path.insert(0, 'src')
@@ -9,6 +10,24 @@ import numpy as np
 from camera import (cie_xyz_bar, rgb_to_lab_like, spectra_to_rgb,
                     water_band_depth)
 from data import GL_PER_BRIX, load, snv, to_brix
+
+DATA = "data/DATASET.csv"      # the path load() reads, relative to the root
+
+
+class _NoData(Exception):
+    pass
+
+
+def _need_data():
+    """The dataset is not redistributed (see data/SOURCE.md).  A fresh clone
+    skips the three checks that read it instead of failing them."""
+    if os.path.exists(DATA):
+        return
+    try:
+        import pytest
+    except ImportError:
+        raise _NoData(f"{DATA} not present; fetch it as data/SOURCE.md says")
+    pytest.skip(f"{DATA} not present; fetch it as data/SOURCE.md says")
 
 
 def test_cmf_peaks():
@@ -62,6 +81,7 @@ def test_water_band_tracks_sugar_in_reds():
     Verified within the two red varieties.  It does not hold in the white one,
     which is reported rather than hidden -- see the README.
     """
+    _need_data()
     wl, R, y, v = load()
     d = water_band_depth(wl, R, centre=960.0, left=880.0, right=1003.0)
     assert np.median(d) > 0, "the band must be an absorption feature"
@@ -73,6 +93,7 @@ def test_water_band_tracks_sugar_in_reds():
 
 def test_random_cv_beats_the_mean_but_variety_transfer_does_not():
     """Pins the central finding, so a refactor cannot quietly erase it."""
+    _need_data()
     from exp1_rgb_vs_nir import feature_sets, fit_predict, run_random
     wl, R, y, v = load()
     F = feature_sets(wl, R)
@@ -92,6 +113,7 @@ def test_offset_correction_helps_reds_not_the_white():
     """The failure mode differs by variety: a shift for reds, no relationship
     for the white one.  That difference is what decides whether a handful of
     reference measurements can rescue a calibration."""
+    _need_data()
     from exp1_rgb_vs_nir import feature_sets
     from exp2_transfer import fitted
     wl, R, y, v = load()
@@ -152,7 +174,7 @@ def test_constituents_stay_in_their_windows():
 
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
-    failed = 0
+    failed = skipped = 0
     for fn in fns:
         try:
             fn()
@@ -160,5 +182,13 @@ if __name__ == "__main__":
         except AssertionError as e:
             failed += 1
             print(f"FAIL  {fn.__name__}: {e}")
-    print(f"\n{len(fns) - failed}/{len(fns)} passed")
+        except _NoData as e:
+            skipped += 1
+            print(f"SKIP  {fn.__name__}: {e}")
+        except BaseException as e:            # pytest.skip outside pytest
+            if type(e).__name__ != "Skipped":
+                raise
+            skipped += 1
+            print(f"SKIP  {fn.__name__}: {e}")
+    print(f"\n{len(fns) - failed - skipped}/{len(fns)} passed, {skipped} skipped")
     sys.exit(1 if failed else 0)
